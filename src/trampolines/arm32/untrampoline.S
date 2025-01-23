@@ -45,29 +45,39 @@ untrampolineFunction:
     bx lr
 # End
 
-# This is an alternative implementation of untrampolineFunction that preserves N words of function arguments on the stack
-.equ stackShiftN, 8
+# This is an alternative implementation of untrampolineFunction that preserves symbolData->argsize words of function arguments on the stack
+.equ argSizeOffset, 24
 
 untrampolineStackShift:
-    # Backup argument registers to move the stack
-    stmfd sp!, {r0-r3}
+    # Backup argument registers, frame pointer and one more register
+    stmfd sp!, {r0-r3, r4, r11}
     # r12 holds pointer to our symbolData structure
     
     # We are going to shift part of the stack upwards to make room for the pointer to the symbolData structure and a copy of LR
     # r2 holds current address of the two-word "hole" in stack (currently beyond SP)
     sub r2, sp, #8
-    # r1 holds the target address of the "hole" in stack (currently within the stack)
-    add r1, sp, #(4 + stackShiftN) * 4
     
-    .beginShiftLoop:
-    cmp r1, r2
-    beq endShiftLoop
+    # retrieve the size of function arguments in words
+    ldr r4, [r12, #argSizeOffset]
+    # reduce by the amount of arguments that go into r0-r3
+    subs r4, r4, #4
+    movlo r4, #0
+    # round up to the nearest even number of words
+    # TODO
+    # r1 holds the target address of the "hole" in stack (currently within the stack)
+    add r1, sp, r4, lsl #2
+    # adjust by the number of registers we have pushed onto the stack earlier (6 words) and the size of the hole (2 words)
+    add r1, r1, #(4* (6 - 2))
+    
+    # shifting loop
+1:  cmp r2, r1
+    bge 2f
     
     ldr r3, [r2, #8]
     str r3, [r2]
     add r2, r2, #4
-    b beginShiftLoop
-    .endShiftLoop:
+    b 1b
+2:
     
     # now r1 and r2 hold the address of the "hole" in stack
     # store r12 and LR
@@ -75,68 +85,87 @@ untrampolineStackShift:
     # adjust the SP
     sub sp, sp, #8
     
-    # Back up one more register and frame pointer
-    stmfd sp!, {r4, r11}
-    
     # All registers backed up! We can now call the function (re)constructor in C
     # It needs the symbol_data struct ptr
     mov r0, r12
-    # We also need it later for retrieving the function address, so store it in callee-preserved register r4
-    mov r4, r12
+    # We also need it later for retrieving the function address, so store it in callee-preserved register r11
+    mov r11, r12
     bl untrampolineInit
     
     # Load function address to r12
-    ldr r12, [r4]
+    ldr r12, [r11]
+    
+    # Set up return address depending on the amount of stack arguments
+    adr lr, .LreturnBase
+    # Every other instruction = word contains another jump target, since we rounded to the nearest double-word we can just add
+    add lr, lr, r4, lsl #2
     
     # Reconstruct registers
-    ldmfd sp!, {r4, r11}
-    ldmfd sp!, {r0-r3}
+    ldmfd sp!, {r0-r3, r4, r11}
     
     # Now it's safe to jump to the function
-    blx r12
+    bx r12
     
     # Now the situation is as follow:
     # r0-r3 contain the function's return value
     # r4-r11 are back to what they were before the function was called (callee-preserved)
     # r12 is undefined
-    # lr is the address of the next instruction
-    # The only useful guarantee we have at this point is that the SP has been preserved
+    # SP has been preserved
+    # LR contains the return address we calculated earlier and execution will resume there
     
-    # Retrieve symbolData structure from fixed offset within the stack
-    ldr r12, [sp, #stackShiftN * 4]
+    .LreturnBase:
     
-    # Back up argument/return registers
-    stmfd sp!, {r0-r3}
+    # store the address of the "hole" in r12 depending on the return address
+    add r12, sp, #0
+    b .LreturnFinal
+    add r12, sp, #(2 * 4)
+    b .LreturnFinal
+    add r12, sp, #(4 * 4)
+    b .LreturnFinal
+    add r12, sp, #(6 * 4)
+    b .LreturnFinal
+    add r12, sp, #(8 * 4)
+    b .LreturnFinal
+    add r12, sp, #(10 * 4)
+    b .LreturnFinal
+    add r12, sp, #(12 * 4)
+    .LreturnFinal:
     
+    # now r12 contains the address of where we stored symbolData* and LR
+    
+    # Back up argument/return registers plus working registers
+    stmfd sp!, {r0-r3, r4, r5}
+    
+    # Back up address of "hole" to a callee-saved register
+    mov r4, r12
+    
+    # Retrieve symbolData address from saved address within the stack
+    ldr r0, [r12]
     # Make the function a trampoline again
-    mov r0, r12
     bl untrampolineFini
     
-    # Restore LR from from fixed offset within the stack
-    ldr lr, [sp, #(stackShiftN + 1 + 4) * 4]
+    # Restore LR from from saved address within the stack
+    ldr lr, [r4, #4]
     
-    # We do not need the LR and symbolDate structure anymore, so we can fill the hole again
+    # We do not need the LR and symbolDate address anymore, so we can fill the hole again
     # r0 - r3 are still backed up and available for implementation of the unshift loop
-    
-    # r1 holds address of hole
-    sub r1, sp, #(4 + stackShiftN) * 4
+    # r4 holds address of hole
     
     # shift hole until it has reached SP
-    .beginUnshiftLoop:
-    cmp r1, sp
-    beq .endUnshiftLoop
+1:  cmp r4, sp
+    ble 2f
     
-    ldr r2, [r1, #-8]
-    str r2, [r1, #8]
-    sub r1, r1, #4
-    b .beginUnshiftLoop
-    .endUnshiftLoop:
+    ldr r2, [r4, #-4]
+    str r2, [r4, #4]
+    sub r4, r4, #4
+    b 1b
+2:
     
     # now the SP points to a hole, so we have to adjust it to be full descending again
     add sp, sp, #8
     
     # Restore argument/return registers and return
-    ldmfd sp!, {r0-r3}
+    ldmfd sp!, {r0-r3, r4, r5}
     bx lr
 
 untrampolineStep2:

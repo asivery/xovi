@@ -78,6 +78,8 @@ struct SymbolData *pivotSymbol(const char *symbol, void *newaddr) {
     s->size = ARCHDEP_TRAMPOLINE_LENGTH + ARCHDEP_UNTRAMPOLINE_LENGTH;
     s->beginning_trampoline = malloc(ARCHDEP_TRAMPOLINE_LENGTH);
     s->step_2_trampoline = malloc(ARCHDEP_UNTRAMPOLINE_LENGTH);
+    // FIXME sets the argument size to a hardcoded value of 4 words, resulting in fast codepath
+    s->argsize = 4;
     pthread_mutex_init (&s->mutex, NULL);
     mprotect(s->page_address, pagesize, PROT_READ | PROT_EXEC | PROT_WRITE);
     memcpy(s->beginning_trampoline, trampoline, ARCHDEP_TRAMPOLINE_LENGTH);
@@ -94,13 +96,23 @@ int untrampolineFini(struct SymbolData *symbol) {
     pthread_mutex_unlock(&symbol->mutex);
 }
 extern void untrampolineFunction(void);
+extern void untrampolineStackShift(void);
 void generateUntrampoline(void *function, struct SymbolData *symbol, int bytesRemaining) {
+
+    void *untrampoline = untrampolineFunction;
+    if(symbol->argsize > 4) {
+        untrampoline = untrampolineStackShift;
+    }
+    else if(symbol->argsize > 16) {
+        printf("[F]: Fatal error - cannot hook function with argument size above 64 byte!\n");
+        exit(1);
+    }
 
     instr_t trampoline[] = {
         0xe59fc000, // ldr r12, [ pc ] - this will load pc (this address) + 8 (default ARM behavior.
         0xe59ff000, // ldr pc, [ pc ] - load the untrampolineFunction's address into PC (switch instr.set if needed)
         (instr_t) symbol,
-        (instr_t) untrampolineFunction // address loaded by previous instruction, never executed
+        (instr_t) untrampoline // address loaded by previous instruction, never executed
     };
 
     if(sizeof(trampoline) > bytesRemaining) {
