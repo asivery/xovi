@@ -120,7 +120,7 @@ def map_array(array, translator, separator='\n'):
 
 def strip_split(string, delim=' '):
     if ';' in string: string = string[:string.rfind(';')]
-    return [x.strip() for x in string.strip().split(delim)]
+    return [x.strip() for x in string.strip().split(delim) if x]
 
 def parse_version_string(version_string):
     try:
