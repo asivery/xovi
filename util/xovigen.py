@@ -87,6 +87,7 @@ class HeaderState:
 // XOVI metadata
 __attribute__((section(".xovi"))) const char *LINKTABLENAMES = "{format_array(names_table, '', '{}' + zero)}{zero}";
 __attribute__((section(".xovi"))) const void *LINKTABLEVALUES[] = {{ {format_array(link_table, ', ', '(void *) {}')} }};
+__attribute__((section(".xovi"))) const struct XoViEnvironment *Environment = 0;
 {version}
 
 // Resources
