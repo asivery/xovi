@@ -87,6 +87,7 @@ class HeaderState:
 // XOVI metadata
 __attribute__((section(".xovi"))) const char *LINKTABLENAMES = "{format_array(names_table, '', '{}' + zero)}{zero}";
 __attribute__((section(".xovi"))) const void *LINKTABLEVALUES[] = {{ {format_array(link_table, ', ', '(void *) {}')} }};
+__attribute__((section(".xovi"))) const void *Environment = 0;
 {version}
 
 // Resources
@@ -139,7 +140,7 @@ def parse_xovi_file(file_lines):
     for ln, line in enumerate(file_lines):
         err = lambda log: print(f'Error in line {ln+1}: {log}')
         line = strip_split(line)
-        if len(line) == 1 and line[0] == '':
+        if len(line) == 0:
             continue
         if state is ParseState.Default:
             if len(line) != 2:
