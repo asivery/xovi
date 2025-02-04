@@ -14,7 +14,7 @@ class Resource:
     def stringify(self):
         return f"const char r${self.name}[{len(self.value) + 1}] = {{ {','.join(map(str, self.value))}, 0 }};"
     def reference(self):
-        return f"extern const char *r${self.name};"
+        return f"extern const char r${self.name}[{len(self.value) + 1}];"
 
     @classmethod
     def load(clazz, res_name, file_name):
@@ -107,6 +107,14 @@ extern const void *LINKTABLEVALUES[];
 
 // Resources
 {map_array(self.resources, lambda e: e.reference())}
+
+// Environment
+#define XOVI_VERSION "0.1.0"
+
+extern const struct XoViEnvironment {{
+    char *(*getExtensionDirectory)(const char *family);
+    void (*requireExtension)(const char *name, unsigned char major, unsigned char minor, unsigned char patch);
+}} *Environment;
 
 #endif
             """.strip() + '\n'
