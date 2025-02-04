@@ -58,6 +58,8 @@ untrampolineStep2:
     # r1 - source
     ldr r0, [r12]
     ldr r1, [r12, #12]
+    # Zero out lsb of destination in case it is a Thumb function
+    bic r0, r0, #1
     # Copy S1 Trampoline --> Start of function
     mov r2, #2
     .l1:

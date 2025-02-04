@@ -10,15 +10,17 @@
 #include "arm32.h"
 
 void initCall(struct SymbolData *data) {
-    memcpy(data->address, data->beginning_org, ARCHDEP_TRAMPOLINE_LENGTH);
-    memcpy(data->address + ARCHDEP_TRAMPOLINE_LENGTH, data->step_2_trampoline, ARCHDEP_UNTRAMPOLINE_LENGTH);
-    __builtin___clear_cache(data->address, data->address + ARCHDEP_UNTRAMPOLINE_LENGTH + ARCHDEP_TRAMPOLINE_LENGTH);
+    void *address = (void *)((ptrint_t)data->address & (~0x1));
+    memcpy(address, data->beginning_org, ARCHDEP_TRAMPOLINE_LENGTH);
+    memcpy(address + ARCHDEP_TRAMPOLINE_LENGTH, data->step_2_trampoline, ARCHDEP_UNTRAMPOLINE_LENGTH);
+    __builtin___clear_cache(address, address + ARCHDEP_UNTRAMPOLINE_LENGTH + ARCHDEP_TRAMPOLINE_LENGTH);
 }
 
 void finiCall(struct SymbolData *data) {
-    memcpy(data->address, data->beginning_trampoline, ARCHDEP_TRAMPOLINE_LENGTH);
-    memcpy(data->address + ARCHDEP_TRAMPOLINE_LENGTH, data->beginning_org + ARCHDEP_TRAMPOLINE_LENGTH, ARCHDEP_UNTRAMPOLINE_LENGTH);
-    __builtin___clear_cache(data->address, data->address + ARCHDEP_UNTRAMPOLINE_LENGTH + ARCHDEP_TRAMPOLINE_LENGTH);
+    void *address = (void *)((ptrint_t)data->address & (~0x1));
+    memcpy(address, data->beginning_trampoline, ARCHDEP_TRAMPOLINE_LENGTH);
+    memcpy(address + ARCHDEP_TRAMPOLINE_LENGTH, data->beginning_org + ARCHDEP_TRAMPOLINE_LENGTH, ARCHDEP_UNTRAMPOLINE_LENGTH);
+    __builtin___clear_cache(address, address + ARCHDEP_UNTRAMPOLINE_LENGTH + ARCHDEP_TRAMPOLINE_LENGTH);
 }
 extern void untrampolineStep2(void);
 
@@ -44,7 +46,7 @@ struct SymbolData *pivotSymbol(const char *symbol, void *newaddr) {
         }, 2 * sizeof(instr_t));
     } else {
         memcpy(trampoline, (instr_t[]){
-            0xf8dff000, // ldr pc, [ pc ]
+            0xF000F8DF, // ldr pc, [ pc ]
             (instr_t)newaddr
         }, 2 * sizeof(instr_t));
     }
@@ -60,17 +62,17 @@ struct SymbolData *pivotSymbol(const char *symbol, void *newaddr) {
         }, 4 * sizeof(instr_t));
     } else {
         memcpy(s2trampoline, (instr_t[]){
-            0xf8dfc00c, // LDR R12, [PC, #12]
-            0xf8dff00c, // LDR PC,  [PC, #12]
-            (instr_t)untrampolineStep2,
-            (instr_t)s // addresses loaded by previous instructions, never executed
+            0xC004F8DF, // LDR R12, [PC, #4]
+            0xF004F8DF, // LDR PC,  [PC, #4]
+            (instr_t)s,
+            (instr_t)untrampolineStep2 // addresses loaded by previous instructions, never executed
         }, 4 * sizeof(instr_t));
     }
 
     // During the restore-call, there will be 2 trampolines at the start of the function.
     uint8_t *funcstart = malloc(ARCHDEP_TRAMPOLINE_LENGTH + ARCHDEP_UNTRAMPOLINE_LENGTH);
     // Place the beginning of the function into the allocated region
-    memcpy(funcstart, symboladdr, ARCHDEP_TRAMPOLINE_LENGTH + ARCHDEP_UNTRAMPOLINE_LENGTH);
+    memcpy(funcstart, (void *)((ptrint_t)symboladdr & (~0x1)), ARCHDEP_TRAMPOLINE_LENGTH + ARCHDEP_UNTRAMPOLINE_LENGTH);
 
     s->address = symboladdr;
     s->beginning_org = funcstart;
