@@ -50,7 +50,7 @@ untrampolineStep2:
     # Replace the beginning of the function to the original trampoline.
     # Then replace the second trampoline to original code. Do so WITHOUT USING ANY
     # REGISTERS. NONE OF THEM ARE SAFE AT THIS POINT.
-    stmfd sp!, {r0-r3}
+    stmfd sp!, {r0-r3, r4, lr}
     mrs r0, cpsr
     stmfd sp!, {r0, r12}
     # I will need at least the 4 registers to implement a copy loop.
@@ -58,6 +58,8 @@ untrampolineStep2:
     # r1 - source
     ldr r0, [r12]
     ldr r1, [r12, #12]
+    # Zero out lsb of destination in case it is a Thumb function
+    bic r0, r0, #1
     # Copy S1 Trampoline --> Start of function
     mov r2, #2
     .l1:
@@ -87,7 +89,7 @@ untrampolineStep2:
 
     ldmfd sp!, {r0, r12}
     msr cpsr, r0
-    ldmfd sp!, {r0-r3}
+    ldmfd sp!, {r0-r3, r4, lr}
     
     ldr r12, [r12]
     # Done. Return to the function.
