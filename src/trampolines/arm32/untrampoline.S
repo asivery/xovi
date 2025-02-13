@@ -168,6 +168,8 @@ untrampolineStackShift:
     ldmfd sp!, {r0-r3, r4, r5}
     bx lr
 
+.equ trampoline2OffsetOffset, 28
+
 untrampolineStep2:
     # After we enter the function, we need to get rid of the original code
     # as soon as possible.
@@ -196,7 +198,7 @@ untrampolineStep2:
     # Now copy original code (f) into the current address
     ldr r1, [r12, #8]
     add r1, r1, #8
-    mov r2, #4
+    mov r2, #5
     .l2:
     ldr r3, [r1], #4
     str r3, [r0], #4
@@ -214,10 +216,15 @@ untrampolineStep2:
 
     ldmfd sp!, {r0, r12}
     msr cpsr, r0
+
+    # Load function address plus offset needed for mixed 16/32-bit thumb instructions
+    ldr r0, [r12, #trampoline2OffsetOffset]
+    ldr r12, [r12]
+    add r12, r12, r0
+
     ldmfd sp!, {r0-r3, r4, lr}
     
-    ldr r12, [r12]
-    # Done. Return to the function.
+    # Done. Return to the function (plus offset for already executed instructions)
     add r12, r12, #8
     bx r12
 

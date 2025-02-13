@@ -133,8 +133,6 @@ Right now, apart from the race condition mentioned in [Hooks](#hooks), xovi shou
 
 Since the ARM32 code is still quite new, and hasn't been tested as thoroughly as aarch64, it might be less stable.
 
-Due to the lack of viable testing devices, while part of the codebase, THUMB functions' hooking has **NOT** been tested! Please be careful with THUMB functions.
-
 As of right now, only methods which take **up to 4 arguments** can be hooked in ARM32. This is due to the calling convention of 32-bit ARM, according to which in order to transfer more than 4 arguments, they should be passed onto the stack. Xovi's current implementation uses the stack internally to process the trampoline code, therefore arguments 5 and above will become corrupted while executing the original code of any hooked method. This is a temporary issue, and at some point will be fixed.
 
 ## Happy hacking!

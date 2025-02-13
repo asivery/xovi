@@ -1,6 +1,7 @@
 // ALL FUNCTIONS DEFINED IN THIS FILE ARE ARCHITECTURE-DEPENDENT!!
 #pragma once
 #include <pthread.h>
+#include "archdepend.h"
 
 struct SymbolData {
     void *address;
@@ -13,6 +14,7 @@ struct SymbolData {
     int size;
 
     int argsize;
+    ARCHDEP_SYMBOLDATA_FIELDS
 
     pthread_mutex_t mutex;
 };

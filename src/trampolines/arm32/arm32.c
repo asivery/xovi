@@ -9,10 +9,27 @@
 #include "../trampolines.h"
 #include "arm32.h"
 
+// find the beginning of the next instruction after `target` in the stream of mixed 16bit/32bit Thumb instructions beginning at `begin`
+thumb_instr_t *nextThumbInstruction(thumb_instr_t *begin, thumb_instr_t *target) {
+    thumb_instr_t *current = begin-1;
+    while(current <= target) {
+        int det = (*current) >> 11;
+        if(det >= 0x1D) {
+            current += 2;
+        } else {
+            current += 1;
+        }
+    }
+
+    return current;
+}
+
 void initCall(struct SymbolData *data) {
     void *address = (void *)((ptrint_t)data->address & (~0x1));
     memcpy(address, data->beginning_org, ARCHDEP_TRAMPOLINE_LENGTH);
-    memcpy(address + ARCHDEP_TRAMPOLINE_LENGTH, data->step_2_trampoline, ARCHDEP_UNTRAMPOLINE_LENGTH);
+    memcpy(address + ARCHDEP_TRAMPOLINE_LENGTH + data->trampoline_2_offset,
+           data->step_2_trampoline + data->trampoline_2_offset,
+           ARCHDEP_UNTRAMPOLINE_LENGTH - data->trampoline_2_offset);
     __builtin___clear_cache(address, address + ARCHDEP_UNTRAMPOLINE_LENGTH + ARCHDEP_TRAMPOLINE_LENGTH);
 }
 
@@ -54,7 +71,7 @@ struct SymbolData *pivotSymbol(const char *symbol, void *newaddr, int argSize) {
         }, 2 * sizeof(instr_t));
     }
 
-    instr_t s2trampoline[4];
+    instr_t s2trampoline[5];
 
     if(!is_thumb_func) {
         memcpy(s2trampoline, (instr_t[]){
@@ -65,11 +82,12 @@ struct SymbolData *pivotSymbol(const char *symbol, void *newaddr, int argSize) {
         }, 4 * sizeof(instr_t));
     } else {
         memcpy(s2trampoline, (instr_t[]){
+            0xBF00BF00, // NOP; NOP; # used to adjust the trampoline beginning to the instruction boundaries in a mixed 16bit/32bit stream of Thumb-2 instructions
             0xC004F8DF, // LDR R12, [PC, #4]
             0xF004F8DF, // LDR PC,  [PC, #4]
             (instr_t)s,
             (instr_t)untrampolineStep2 // addresses loaded by previous instructions, never executed
-        }, 4 * sizeof(instr_t));
+        }, 5 * sizeof(instr_t));
     }
 
     // During the restore-call, there will be 2 trampolines at the start of the function.
@@ -83,8 +101,12 @@ struct SymbolData *pivotSymbol(const char *symbol, void *newaddr, int argSize) {
     s->size = ARCHDEP_TRAMPOLINE_LENGTH + ARCHDEP_UNTRAMPOLINE_LENGTH;
     s->beginning_trampoline = malloc(ARCHDEP_TRAMPOLINE_LENGTH);
     s->step_2_trampoline = malloc(ARCHDEP_UNTRAMPOLINE_LENGTH);
-    // FIXME sets the argument size to a hardcoded value of 4 words, resulting in fast codepath
     s->argsize = argSize;
+    s->trampoline_2_offset = 0;
+    if(is_thumb_func) {
+        void *step_2_address = symboladdr - 1 + ARCHDEP_TRAMPOLINE_LENGTH;
+        s->trampoline_2_offset = (void*)nextThumbInstruction(symboladdr - 1, step_2_address - 2) - step_2_address;
+    }
     pthread_mutex_init (&s->mutex, NULL);
     mprotect(s->page_address, pagesize, PROT_READ | PROT_EXEC | PROT_WRITE);
     memcpy(s->beginning_trampoline, trampoline, ARCHDEP_TRAMPOLINE_LENGTH);
