@@ -8,6 +8,7 @@
 #include <sys/mman.h>
 #include "../trampolines.h"
 #include "arm32.h"
+#include "../../debug.h"
 
 // find the beginning of the next instruction after `target` in the stream of mixed 16bit/32bit Thumb instructions beginning at `begin`
 thumb_instr_t *nextThumbInstruction(thumb_instr_t *begin, thumb_instr_t *target) {
@@ -101,7 +102,8 @@ struct SymbolData *pivotSymbol(const char *symbol, void *newaddr, int argSize) {
     s->size = ARCHDEP_TRAMPOLINE_LENGTH + ARCHDEP_UNTRAMPOLINE_LENGTH;
     s->beginning_trampoline = malloc(ARCHDEP_TRAMPOLINE_LENGTH);
     s->step_2_trampoline = malloc(ARCHDEP_UNTRAMPOLINE_LENGTH);
-    s->argsize = argSize;
+    // untrampolineStackShift supports only even values of argsize, therefore we need to round up odd numbers
+    s->argsize = (argSize + 1) & (~1);
     s->trampoline_2_offset = 0;
     if(is_thumb_func) {
         void *step_2_address = symboladdr - 1 + ARCHDEP_TRAMPOLINE_LENGTH;
@@ -128,12 +130,12 @@ void generateUntrampoline(void *function, struct SymbolData *symbol, int bytesRe
 
     void *untrampoline = untrampolineFunction;
     // argsize uses words.
-    if(symbol->argsize > 4) {
-        untrampoline = untrampolineStackShift;
-    }
-    else if(symbol->argsize > 16) {
+    if(symbol->argsize > 16) {
         LOG_F("[F]: Fatal error - cannot hook function with argument size above 64 bytes (16 words)!\n");
         exit(1);
+    }
+    else if(symbol->argsize > 4) {
+        untrampoline = untrampolineStackShift;
     }
 
     instr_t trampoline[] = {
