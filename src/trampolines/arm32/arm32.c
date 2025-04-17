@@ -30,15 +30,15 @@ void initCall(struct SymbolData *data) {
     memcpy(address, data->beginningOfOriginalFunction, ARCHDEP_TRAMPOLINE_LENGTH);
     memcpy(address + ARCHDEP_TRAMPOLINE_LENGTH + data->trampoline2Offset,
            data->step2Trampoline + data->trampoline2Offset,
-           ARCHDEP_UNTRAMPOLINE_LENGTH - data->trampoline2Offset);
-    __builtin___clear_cache(address, address + ARCHDEP_UNTRAMPOLINE_LENGTH + ARCHDEP_TRAMPOLINE_LENGTH);
+           ARCHDEP_S2TRAMPOLINE_LENGTH - data->trampoline2Offset);
+    __builtin___clear_cache(address, address + ARCHDEP_S2TRAMPOLINE_LENGTH + ARCHDEP_TRAMPOLINE_LENGTH);
 }
 
 void finiCall(struct SymbolData *data) {
     void *address = (void *)((ptrint_t)data->address & (~0x1));
     memcpy(address, data->firstTrampoline, ARCHDEP_TRAMPOLINE_LENGTH);
-    memcpy(address + ARCHDEP_TRAMPOLINE_LENGTH, data->beginningOfOriginalFunction + ARCHDEP_TRAMPOLINE_LENGTH, ARCHDEP_UNTRAMPOLINE_LENGTH);
-    __builtin___clear_cache(address, address + ARCHDEP_UNTRAMPOLINE_LENGTH + ARCHDEP_TRAMPOLINE_LENGTH);
+    memcpy(address + ARCHDEP_TRAMPOLINE_LENGTH, data->beginningOfOriginalFunction + ARCHDEP_TRAMPOLINE_LENGTH, ARCHDEP_S2TRAMPOLINE_LENGTH);
+    __builtin___clear_cache(address, address + ARCHDEP_S2TRAMPOLINE_LENGTH + ARCHDEP_TRAMPOLINE_LENGTH);
 }
 extern void untrampolineStep2(void);
 
@@ -72,36 +72,49 @@ struct SymbolData *pivotSymbol(const char *symbol, void *newaddr, int argSize) {
         }, 2 * sizeof(instr_t));
     }
 
-    instr_t s2trampoline[5];
+    instr_t s2trampoline[3];
+
+    instr_t *closures = mmap(NULL, pagesize, PROT_WRITE | PROT_READ | PROT_EXEC, MAP_ANONYMOUS | MAP_PRIVATE, -1, 0);
+    // The calling closure is independent on the current instruction set (forced ARM)
+    memcpy(closures, (instr_t[]) {
+        // Closure 1: Returning closure
+        0xe8bd1000, // ldmfd sp!, { r12 }
+        0xe51ff004, // ldr pc, [pc, #-4]
+        0x00000000, // Dummy data.
+
+        // Closure 2: Calling closure
+        0xe52dc004, // stmfd sp!, { r12 }
+        0xe59fc000, // ldr r12, [ pc ]
+        0xe59ff000, // ldr pc, [ pc ]
+        (instr_t) s,
+        (instr_t) untrampolineStep2,
+    }, 8 * sizeof(instr_t));
 
     if(!is_thumb_func) {
         memcpy(s2trampoline, (instr_t[]){
-            0xe59fc000, // ldr r12, [ pc ]
-            0xe59ff000, // ldr pc, [ pc ]
-            (instr_t) s,
-            (instr_t) untrampolineStep2, // address loaded by previous instruction, never executed
-        }, 4 * sizeof(instr_t));
+            0xe51ff004, // ldr pc, [ pc, #-4 ]
+            (instr_t) &closures[3], // address loaded by previous instruction, never executed
+        }, 2 * sizeof(instr_t));
     } else {
         memcpy(s2trampoline, (instr_t[]){
             0xBF00BF00, // NOP; NOP; # used to adjust the trampoline beginning to the instruction boundaries in a mixed 16bit/32bit stream of Thumb-2 instructions
-            0xC004F8DF, // LDR R12, [PC, #4]
-            0xF004F8DF, // LDR PC,  [PC, #4]
-            (instr_t)s,
-            (instr_t)untrampolineStep2 // addresses loaded by previous instructions, never executed
-        }, 5 * sizeof(instr_t));
+            0xF000F8DF, // LDR PC, [PC]
+            (instr_t) &closures[3] // addresses loaded by previous instructions, never executed
+        }, 3 * sizeof(instr_t));
     }
 
     // During the restore-call, there will be 2 trampolines at the start of the function.
-    uint8_t *funcstart = malloc(ARCHDEP_TRAMPOLINE_LENGTH + ARCHDEP_UNTRAMPOLINE_LENGTH);
+    uint8_t *funcstart = malloc(ARCHDEP_TRAMPOLINE_LENGTH + ARCHDEP_S2TRAMPOLINE_LENGTH);
     // Place the beginning of the function into the allocated region
-    memcpy(funcstart, (void *)((ptrint_t)symboladdr & (~0x1)), ARCHDEP_TRAMPOLINE_LENGTH + ARCHDEP_UNTRAMPOLINE_LENGTH);
+    memcpy(funcstart, (void *)((ptrint_t)symboladdr & (~0x1)), ARCHDEP_TRAMPOLINE_LENGTH + ARCHDEP_S2TRAMPOLINE_LENGTH);
 
     s->address = symboladdr;
     s->beginningOfOriginalFunction = funcstart;
     s->page_address = (void*) (((unsigned int) symboladdr) & ~(pagesize - 1));
-    s->size = ARCHDEP_TRAMPOLINE_LENGTH + ARCHDEP_UNTRAMPOLINE_LENGTH;
+    s->size = ARCHDEP_TRAMPOLINE_LENGTH + ARCHDEP_S2TRAMPOLINE_LENGTH;
     s->firstTrampoline = malloc(ARCHDEP_TRAMPOLINE_LENGTH);
-    s->step2Trampoline = malloc(ARCHDEP_UNTRAMPOLINE_LENGTH);
+    s->step2Trampoline = malloc(ARCHDEP_S2TRAMPOLINE_LENGTH);
+    s->returningClosureAllocSpace = closures;
 
     // untrampolineStackShift supports only even values of argsize, therefore we need to round up odd numbers
     s->argsize = (argSize + 1) & (~1);
@@ -114,7 +127,7 @@ struct SymbolData *pivotSymbol(const char *symbol, void *newaddr, int argSize) {
     pthread_mutex_init (&s->mutex, NULL);
     mprotect(s->page_address, pagesize, PROT_READ | PROT_EXEC | PROT_WRITE);
     memcpy(s->firstTrampoline, trampoline, ARCHDEP_TRAMPOLINE_LENGTH);
-    memcpy(s->step2Trampoline, s2trampoline, ARCHDEP_UNTRAMPOLINE_LENGTH);
+    memcpy(s->step2Trampoline, s2trampoline, ARCHDEP_S2TRAMPOLINE_LENGTH);
     finiCall(s);
     return s;
 }

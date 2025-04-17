@@ -1,5 +1,6 @@
 #pragma once
-#define ARCHDEP_UNTRAMPOLINE_LENGTH (5 * 4)
+#define ARCHDEP_UNTRAMPOLINE_LENGTH (4 * 4)
+#define ARCHDEP_S2TRAMPOLINE_LENGTH (3 * 4)
 #define ARCHDEP_TRAMPOLINE_LENGTH (2 * 4)
 typedef unsigned int instr_t;
 typedef unsigned int ptrint_t;
@@ -17,6 +18,7 @@ struct SymbolData {
     int argsize;
 
     int trampoline2Offset;
+    void *returningClosureAllocSpace;
 
     pthread_mutex_t mutex;
 };

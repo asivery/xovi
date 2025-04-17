@@ -11,14 +11,14 @@
 
 void initCall(struct SymbolData *data) {
     memcpy(data->address, data->beginningOfOriginalFunction, ARCHDEP_TRAMPOLINE_LENGTH);
-    memcpy(data->address + ARCHDEP_TRAMPOLINE_LENGTH, data->step2Trampoline, ARCHDEP_UNTRAMPOLINE_LENGTH);
-    __builtin___clear_cache(data->address, data->address + ARCHDEP_UNTRAMPOLINE_LENGTH + ARCHDEP_TRAMPOLINE_LENGTH);
+    memcpy(data->address + ARCHDEP_TRAMPOLINE_LENGTH, data->step2Trampoline, ARCHDEP_S2TRAMPOLINE_LENGTH);
+    __builtin___clear_cache(data->address, data->address + ARCHDEP_S2TRAMPOLINE_LENGTH + ARCHDEP_TRAMPOLINE_LENGTH);
 }
 
 void finiCall(struct SymbolData *data) {
     memcpy(data->address, data->firstTrampoline, ARCHDEP_TRAMPOLINE_LENGTH);
-    memcpy(data->address + ARCHDEP_TRAMPOLINE_LENGTH, data->beginningOfOriginalFunction + ARCHDEP_TRAMPOLINE_LENGTH, ARCHDEP_UNTRAMPOLINE_LENGTH);
-    __builtin___clear_cache(data->address, data->address + ARCHDEP_UNTRAMPOLINE_LENGTH + ARCHDEP_TRAMPOLINE_LENGTH);
+    memcpy(data->address + ARCHDEP_TRAMPOLINE_LENGTH, data->beginningOfOriginalFunction + ARCHDEP_TRAMPOLINE_LENGTH, ARCHDEP_S2TRAMPOLINE_LENGTH);
+    __builtin___clear_cache(data->address, data->address + ARCHDEP_S2TRAMPOLINE_LENGTH + ARCHDEP_TRAMPOLINE_LENGTH);
 }
 extern void untrampolineStep2(void);
 
@@ -76,23 +76,23 @@ struct SymbolData *pivotSymbol(const char *symbol, void *newaddr, int argSize) {
     };
 
     // During the restore-call, there will be 2 trampolines at the start of the function.
-    uint8_t *funcstart = malloc(ARCHDEP_TRAMPOLINE_LENGTH + ARCHDEP_UNTRAMPOLINE_LENGTH);
+    uint8_t *funcstart = malloc(ARCHDEP_TRAMPOLINE_LENGTH + ARCHDEP_S2TRAMPOLINE_LENGTH);
     // Place the beginning of the function into the allocated region
-    memcpy(funcstart, symboladdr, ARCHDEP_TRAMPOLINE_LENGTH + ARCHDEP_UNTRAMPOLINE_LENGTH);
+    memcpy(funcstart, symboladdr, ARCHDEP_TRAMPOLINE_LENGTH + ARCHDEP_S2TRAMPOLINE_LENGTH);
 
     // Setup the structure's values
     s->address = symboladdr;
     s->beginningOfOriginalFunction = funcstart;
     s->page_address = (void*) (((unsigned long long int) symboladdr) & ~(pagesize - 1));
-    s->size = ARCHDEP_TRAMPOLINE_LENGTH + ARCHDEP_UNTRAMPOLINE_LENGTH;
+    s->size = ARCHDEP_TRAMPOLINE_LENGTH + ARCHDEP_S2TRAMPOLINE_LENGTH;
     s->firstTrampoline = malloc(ARCHDEP_TRAMPOLINE_LENGTH);
-    s->step2Trampoline = malloc(ARCHDEP_UNTRAMPOLINE_LENGTH);
+    s->step2Trampoline = malloc(ARCHDEP_S2TRAMPOLINE_LENGTH);
 
     // Write the correct data to the addresses in the structure object.
     pthread_mutex_init (&s->mutex, NULL);
     mprotect(s->page_address, pagesize, PROT_READ | PROT_EXEC | PROT_WRITE);
     memcpy(s->firstTrampoline, trampoline, ARCHDEP_TRAMPOLINE_LENGTH);
-    memcpy(s->step2Trampoline, s2trampoline, ARCHDEP_UNTRAMPOLINE_LENGTH);
+    memcpy(s->step2Trampoline, s2trampoline, ARCHDEP_S2TRAMPOLINE_LENGTH);
     finiCall(s);
     return s;
 }

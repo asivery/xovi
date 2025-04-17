@@ -169,6 +169,7 @@ untrampolineStackShift:
     bx lr
 
 .equ trampoline2OffsetOffset, 28
+.equ closuresOffset, 32
 
 untrampolineStep2:
     # After we enter the function, we need to get rid of the original code
@@ -198,7 +199,7 @@ untrampolineStep2:
     # Now copy original code (f) into the current address
     ldr r1, [r12, #8]
     add r1, r1, #8
-    mov r2, #5
+    mov r2, #3
     .l2:
     ldr r3, [r1], #4
     str r3, [r0], #4
@@ -219,13 +220,17 @@ untrampolineStep2:
 
     # Load function address plus offset needed for mixed 16/32-bit thumb instructions
     ldr r0, [r12, #trampoline2OffsetOffset]
-    ldr r12, [r12]
-    add r12, r12, r0
+    ldr r1, [r12]
+    add r0, r1, r0
+    # Add the offset for already executed instructions.
+    add r0, r0, #8
+    # R0 contains the address of where to return to.
+    # Write it into the closure
+    ldr r12, [r12, #closuresOffset]
+    str r0, [r12, #8]
 
     ldmfd sp!, {r0-r3, r4, lr}
-    
-    # Done. Return to the function (plus offset for already executed instructions)
-    add r12, r12, #8
+    # Return to the closure and restore everything.
     bx r12
 
 .section .note.GNU-stack
