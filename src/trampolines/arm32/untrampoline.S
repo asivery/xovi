@@ -218,16 +218,7 @@ untrampolineStep2:
     ldmfd sp!, {r0, r12}
     msr cpsr, r0
 
-    # Load function address plus offset needed for mixed 16/32-bit thumb instructions
-    ldr r0, [r12, #trampoline2OffsetOffset]
-    ldr r1, [r12]
-    add r0, r1, r0
-    # Add the offset for already executed instructions.
-    add r0, r0, #8
-    # R0 contains the address of where to return to.
-    # Write it into the closure
     ldr r12, [r12, #closuresOffset]
-    str r0, [r12, #8]
 
     ldmfd sp!, {r0-r3, r4, lr}
     # Return to the closure and restore everything.
