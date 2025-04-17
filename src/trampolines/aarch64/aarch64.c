@@ -10,14 +10,14 @@
 #include "aarch64.h"
 
 void initCall(struct SymbolData *data) {
-    memcpy(data->address, data->beginning_org, ARCHDEP_TRAMPOLINE_LENGTH);
-    memcpy(data->address + ARCHDEP_TRAMPOLINE_LENGTH, data->step_2_trampoline, ARCHDEP_UNTRAMPOLINE_LENGTH);
+    memcpy(data->address, data->beginningOfOriginalFunction, ARCHDEP_TRAMPOLINE_LENGTH);
+    memcpy(data->address + ARCHDEP_TRAMPOLINE_LENGTH, data->step2Trampoline, ARCHDEP_UNTRAMPOLINE_LENGTH);
     __builtin___clear_cache(data->address, data->address + ARCHDEP_UNTRAMPOLINE_LENGTH + ARCHDEP_TRAMPOLINE_LENGTH);
 }
 
 void finiCall(struct SymbolData *data) {
-    memcpy(data->address, data->beginning_trampoline, ARCHDEP_TRAMPOLINE_LENGTH);
-    memcpy(data->address + ARCHDEP_TRAMPOLINE_LENGTH, data->beginning_org + ARCHDEP_TRAMPOLINE_LENGTH, ARCHDEP_UNTRAMPOLINE_LENGTH);
+    memcpy(data->address, data->firstTrampoline, ARCHDEP_TRAMPOLINE_LENGTH);
+    memcpy(data->address + ARCHDEP_TRAMPOLINE_LENGTH, data->beginningOfOriginalFunction + ARCHDEP_TRAMPOLINE_LENGTH, ARCHDEP_UNTRAMPOLINE_LENGTH);
     __builtin___clear_cache(data->address, data->address + ARCHDEP_UNTRAMPOLINE_LENGTH + ARCHDEP_TRAMPOLINE_LENGTH);
 }
 extern void untrampolineStep2(void);
@@ -80,16 +80,19 @@ struct SymbolData *pivotSymbol(const char *symbol, void *newaddr, int argSize) {
     // Place the beginning of the function into the allocated region
     memcpy(funcstart, symboladdr, ARCHDEP_TRAMPOLINE_LENGTH + ARCHDEP_UNTRAMPOLINE_LENGTH);
 
+    // Setup the structure's values
     s->address = symboladdr;
-    s->beginning_org = funcstart;
+    s->beginningOfOriginalFunction = funcstart;
     s->page_address = (void*) (((unsigned long long int) symboladdr) & ~(pagesize - 1));
     s->size = ARCHDEP_TRAMPOLINE_LENGTH + ARCHDEP_UNTRAMPOLINE_LENGTH;
-    s->beginning_trampoline = malloc(ARCHDEP_TRAMPOLINE_LENGTH);
-    s->step_2_trampoline = malloc(ARCHDEP_UNTRAMPOLINE_LENGTH);
+    s->firstTrampoline = malloc(ARCHDEP_TRAMPOLINE_LENGTH);
+    s->step2Trampoline = malloc(ARCHDEP_UNTRAMPOLINE_LENGTH);
+
+    // Write the correct data to the addresses in the structure object.
     pthread_mutex_init (&s->mutex, NULL);
     mprotect(s->page_address, pagesize, PROT_READ | PROT_EXEC | PROT_WRITE);
-    memcpy(s->beginning_trampoline, trampoline, ARCHDEP_TRAMPOLINE_LENGTH);
-    memcpy(s->step_2_trampoline, s2trampoline, ARCHDEP_UNTRAMPOLINE_LENGTH);
+    memcpy(s->firstTrampoline, trampoline, ARCHDEP_TRAMPOLINE_LENGTH);
+    memcpy(s->step2Trampoline, s2trampoline, ARCHDEP_UNTRAMPOLINE_LENGTH);
     finiCall(s);
     return s;
 }

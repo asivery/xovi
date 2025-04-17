@@ -3,21 +3,7 @@
 #include <pthread.h>
 #include "archdepend.h"
 
-struct SymbolData {
-    void *address;
-    void *page_address;
-
-    void *beginning_org;
-    void *beginning_trampoline;
-    void *step_2_trampoline;
-
-    int size;
-
-    int argsize;
-    ARCHDEP_SYMBOLDATA_FIELDS
-
-    pthread_mutex_t mutex;
-};
+struct SymbolData;
 
 // Returns the size of the function (in bytes)
 // Takes in:
