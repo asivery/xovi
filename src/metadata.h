@@ -28,3 +28,4 @@ struct XoviMetadataEntry *getMetadataEntryForFunction(const char *extension, con
 
 void createMetadataSearchingIterator(struct _ExtensionMetadataIterator *iterator, const char *metadataEntryName);
 struct XoviMetadataEntry *nextFunctionMetadataEntry(struct _ExtensionMetadataIterator *iterator);
+void *getFunctionFromIterator(struct _ExtensionMetadataIterator *iterator);

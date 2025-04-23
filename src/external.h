@@ -31,7 +31,7 @@ struct XoviMetadataEntry {
 struct ExtensionMetadataIterator {
     const char *extensionName;
     const char *functionName;
-    const char OPAQUE[];
+    const char OPAQUE[sizeof(void *) * 4 + sizeof(bool)];
 };
 
 struct XoViEnvironment {
@@ -50,5 +50,6 @@ struct XoViEnvironment {
 
     void (*createMetadataSearchingIterator)(struct ExtensionMetadataIterator *iterator, const char *metadataEntryName);
     struct XoviMetadataEntry *(*nextFunctionMetadataEntry)(struct ExtensionMetadataIterator *iterator);
+    void *(*getFunctionFromIterator)(struct ExtensionMetadataIterator *iterator);
 };
 #endif

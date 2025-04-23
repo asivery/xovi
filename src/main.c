@@ -73,6 +73,7 @@ void CONSTRUCTOR _ext_init() {
     // Cast required due to differences between the public and private Iterator structure
     environment->createMetadataSearchingIterator = (void (*)(struct ExtensionMetadataIterator *, const char *)) createMetadataSearchingIterator;
     environment->nextFunctionMetadataEntry = (struct XoviMetadataEntry *(*)(struct ExtensionMetadataIterator *)) nextFunctionMetadataEntry;
+    environment->getFunctionFromIterator = (void *(*)(struct ExtensionMetadataIterator *)) getFunctionFromIterator;
 
     // At this point none of the functions could have been hooked.
     // It's safe to use stdlib.

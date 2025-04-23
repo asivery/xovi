@@ -1,4 +1,5 @@
 #include "metadata.h"
+#include "dynamiclinker.h"
 #include "uthash.h"
 
 extern struct LinkingPass1Result *XOVI_DL_EXTENSIONS;
@@ -164,4 +165,8 @@ struct XoviMetadataEntry *nextFunctionMetadataEntry(struct _ExtensionMetadataIte
     }
 
     return NULL; // No more metadata entries found
+}
+
+void *getFunctionFromIterator(struct _ExtensionMetadataIterator *iterator) {
+    return iterator->inExtensionFunctionRoot->address;
 }
