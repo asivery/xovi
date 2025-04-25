@@ -17,7 +17,7 @@ typedef union {
     bool b;
     struct {
         int sLength;
-        char s[];
+        const char *s;
     };
 } XoviMetadataValue;
 
@@ -31,6 +31,7 @@ struct XoviMetadataEntry {
 struct ExtensionMetadataIterator {
     const char *extensionName;
     const char *functionName;
+    void *functionAddress;
     char OPAQUE[sizeof(void *) * 4 + sizeof(bool)];
 };
 
@@ -50,6 +51,5 @@ struct XoViEnvironment {
 
     void (*createMetadataSearchingIterator)(struct ExtensionMetadataIterator *iterator, const char *metadataEntryName);
     struct XoviMetadataEntry *(*nextFunctionMetadataEntry)(struct ExtensionMetadataIterator *iterator);
-    void *(*getFunctionFromIterator)(struct ExtensionMetadataIterator *iterator);
 };
 #endif

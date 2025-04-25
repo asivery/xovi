@@ -104,6 +104,7 @@ void createMetadataSearchingIterator(struct _ExtensionMetadataIterator *iterator
     iterator->query = metadataEntryName;
     iterator->extensionRoot = XOVI_DL_EXTENSIONS;
     iterator->extensionName = XOVI_DL_EXTENSIONS->baseName;
+    iterator->functionAddress = NULL;
     iterator->inExtensionFunctionRoot = *XOVI_DL_EXTENSIONS->functions;
     iterator->currentMetadataRoot = iterator->inExtensionFunctionRoot->metadataChain;
     iterator->functionName = NULL;
@@ -130,6 +131,7 @@ static struct XoviMetadataEntry *getFromCurrentChainThenAdvance(struct _Extensio
             if(strcmp((*iterator->currentMetadataRoot)->name, iterator->query) == 0) {
                 iterator->functionName = iterator->inExtensionFunctionRoot->functionName;
                 iterator->extensionName = iterator->extensionRoot->baseName;
+                iterator->functionAddress = iterator->inExtensionFunctionRoot->address;
                 // Since there can only be one metadata attribute named in one way, we can safely
                 // advance to the next function.
                 iterator->inExtensionFunctionRoot = iterator->inExtensionFunctionRoot->hh.next;
@@ -167,6 +169,3 @@ struct XoviMetadataEntry *nextFunctionMetadataEntry(struct _ExtensionMetadataIte
     return NULL; // No more metadata entries found
 }
 
-void *getFunctionFromIterator(struct _ExtensionMetadataIterator *iterator) {
-    return iterator->inExtensionFunctionRoot->address;
-}

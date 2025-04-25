@@ -7,6 +7,7 @@
 struct _ExtensionMetadataIterator {
     const char *extensionName;
     const char *functionName;
+    void *functionAddress;
 
     // Opaque starting from here....
     struct LinkingPass1Result *extensionRoot;
@@ -28,4 +29,3 @@ struct XoviMetadataEntry *getMetadataEntryForFunction(const char *extension, con
 
 void createMetadataSearchingIterator(struct _ExtensionMetadataIterator *iterator, const char *metadataEntryName);
 struct XoviMetadataEntry *nextFunctionMetadataEntry(struct _ExtensionMetadataIterator *iterator);
-void *getFunctionFromIterator(struct _ExtensionMetadataIterator *iterator);
