@@ -33,7 +33,7 @@ untrampolineFunction:
     ldr x17, [x16]
     blr x17
     # Store return value
-    stp x0, x1, [sp, #64]
+    stp x0, x1, [sp, #80]
     stp x8, x9, [sp, #16]
     # This is a call - this function will return.
     # Restore the registers we need to make the function a trampoline again
