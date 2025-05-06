@@ -27,13 +27,13 @@ untrampolineFunction:
     # Now it's safe to say all are registers are destroyed
     # Reconstruct...
     ldmfd sp!, {r0-r3, r12}
-    stmfd sp!, {r12}
+    stmfd sp!, {r11, r12}
     # We will not need the arguments after the function will have returned.
     # Now it's safe to jump to the function
     ldr r12, [r12]
     blx r12
     # Store all potential return values and retrieve the pointer to SymbolData
-    ldmfd sp!, { r12 }
+    ldmfd sp!, { r11, r12 }
     stmfd sp!, {r0-r3}
     # This is a call - this function will return.
     # Restore the registers we need to make the function a trampoline again
