@@ -34,6 +34,7 @@ struct LinkingPass1Result {
     char *baseName;
     struct LinkingPass1SOFunction **functions;
     void (*constructor)();
+    void (*dependencyConstructor)();
     struct XoViEnvironment **environment;
     unsigned char *untrampolineFunctionCache;
     int populatedUntrampolineFunctions;

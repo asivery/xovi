@@ -148,6 +148,7 @@ void loadExtensionPass1(char *extensionSOFile, char *baseName){
         }
     }
     thisExtension->constructor = dlsym(extension, "_xovi_construct");
+    thisExtension->dependencyConstructor = dlsym(extension, "_xovi_depconstruct");
     if(!thisExtension->constructor) {
         LOG("[W]: Pass 1: Extension %s does not export a constructor!\n", baseName);
     }
@@ -310,6 +311,7 @@ void requireExtension(hash_t hash, const char *nameFallback, unsigned char major
         return;
     }
 
+    if(soFile->dependencyConstructor) soFile->dependencyConstructor();
     if(soFile->constructor) soFile->constructor();
     soFile->loaded = 1;
 }

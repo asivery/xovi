@@ -93,6 +93,7 @@ class HeaderState:
     imports: list[str] = list_field()
     conditions: list[str] = list_field()
     overrides: list[str] = list_field()
+    dependencies: list[tuple[str, int, int, int]] = list_field()
     metadata: dict[HeaderAddition, list[MetadataEntry]] = field(default_factory=dict)
     metadata_name_table = ''
     metadata_name_table_offset = 0
@@ -113,6 +114,15 @@ class HeaderState:
             self.metadata_name_table_offset += value[0] + 1
             self.metadata_name_table += output_value + "\\0"
         self.metadata[entry].append(MetadataEntry(name_offset, type_, value))
+
+    def check_dependency(self, referenced_global: str):
+        if '$' in referenced_global:
+            parent = referenced_global[:referenced_global.find('$')]
+            for x in self.dependencies:
+                if x[0] == parent:
+                    break
+            else:
+                raise BaseException(f"Error: Cannot reference {referenced_global} from {parent} without adding an explicit dependency with the 'depends-on' statement before the import!")
 
     def get_metadata_junction_name(self, owner: HeaderAddition, value: list[MetadataEntry]):
         if len(value) == 0:
@@ -210,7 +220,7 @@ extern "C" {{
 // XOVI metadata
 __attribute__((section(".xovi"))) const char *LINKTABLENAMES = "{format_array(names_table, '', '{}' + zero)}{zero}";
 __attribute__((section(".xovi"))) const void *LINKTABLEVALUES[] = {{ {format_array(link_table, ', ', '(void *) {}')} }};
-__attribute__((section(".xovi"))) const void *Environment = 0;
+__attribute__((section(".xovi"))) const struct XoViEnvironment *Environment = 0;
 {version}
 
 __attribute__((section(".xovi_info"))) const char __XOVIMETADATANAMES[] = "{self.metadata_name_table}";
@@ -228,6 +238,12 @@ __attribute__((section(".xovi"))) const struct XoviMetadataEntry **METADATAVALUE
 
 // Resources
 {map_array(self.resources, lambda e: e.stringify())}
+
+// Dependency constructor
+void _xovi_depconstruct() {{
+    {map_array(self.dependencies, lambda e: f"Environment->requireExtension{e!r};".replace("'", '"'))}
+}}
+
 #ifdef __cplusplus
 }}
 #endif
@@ -302,10 +318,16 @@ def parse_xovi_file(file_lines, architecture):
                 return None
             keyword, argument = line
             match keyword.lower():
+                case 'depends-on':
+                    module, semver = argument.split(':')
+                    mj, mn, pa = map(int, semver.split('.'))
+                    header.dependencies.append((module, mj, mn, pa))
                 case 'import':
+                    header.check_dependency(argument)
                     header.imports.append(argument)
                     metadata_attribution = HeaderAddition(HeaderAdditionType.Import, argument)
                 case 'import?':
+                    header.check_dependency(argument)
                     header.imports.append(argument)
                     header.conditions.append(argument)
                     metadata_attribution = HeaderAddition(HeaderAdditionType.Import, argument)
