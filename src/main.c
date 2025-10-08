@@ -4,9 +4,11 @@
 #include "dynamiclinker.h"
 #include "external.h"
 #include "metadata.h"
-#define XOVI_ROOT "/home/root/xovi/"
-#define EXT_ROOT (XOVI_ROOT "extensions.d/")
-#define FILES_ROOT (XOVI_ROOT "exthome/")
+#define XOVI_ROOT_DEFAULT "/home/root/xovi"
+#define EXT_ROOT extRootDir
+#define FILES_ROOT filesRootDir
+
+static const char *extRootDir = NULL, *filesRootDir = NULL;
 
 #ifdef DEBUGFUNC
 #define CONSTRUCTOR
@@ -56,7 +58,21 @@ char *getExtensionDirectory(const char *family){
     return ret;
 }
 
+static char *concat(const char *a, const char *b) {
+    int alen = strlen(a), blen = strlen(b);
+    char *newString = malloc(alen + blen + 1);
+    memcpy(newString, a, alen);
+    memcpy(newString + alen, b, blen);
+    newString[alen + blen] = 0;
+    return newString;
+}
+
 void CONSTRUCTOR _ext_init() {
+    const char *xoviRoot;
+    if((xoviRoot = getenv("XOVI_ROOT")) == NULL) xoviRoot = XOVI_ROOT_DEFAULT;
+    extRootDir = concat(xoviRoot, "/extensions.d/");
+    filesRootDir = concat(xoviRoot, "/exthome/");
+
     struct XoViEnvironment *environment = malloc(sizeof(struct XoViEnvironment));
     environment->getExtensionDirectory = getExtensionDirectory;
 
