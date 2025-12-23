@@ -37,7 +37,7 @@ char *findBaseName(const char *fileName) {
 
 char *mstrcat(const char *a, const char *b, int additionalSpace, char **end) {
     int aLength = strlen(a), bLength = strlen(b);
-    char *c = calloc(1, aLength + bLength + 1);
+    char *c = calloc(1, aLength + bLength + 1 + additionalSpace);
     memcpy(c, a, aLength);
     memcpy(c + aLength, b, bLength);
     c[aLength + bLength] = 0;
