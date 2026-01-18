@@ -98,7 +98,7 @@ void CONSTRUCTOR _ext_init() {
     if((rootDirOfExtensions = opendir(EXT_ROOT)) != NULL){
         // Try to load every extension
         while((entry = readdir(rootDirOfExtensions)) != NULL) {
-            if(entry->d_type == DT_REG){
+            if(entry->d_type == DT_REG || entry->d_type == DT_LNK){
                 // LOG("Loading: %s\n", entry->d_name);
                 char *fullName = findFullName(entry->d_name);
                 loadExtensionPass1(fullName, findBaseName(entry->d_name));
