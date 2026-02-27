@@ -198,7 +198,7 @@ class HeaderState:
         version = ""
         if self.version is not None:
             v = (self.version[0] << 16) | (self.version[1] << 8) | (self.version[2])
-            version = f"""__attribute__((section(".xovi_info"))) const int EXTENSIONVERSION = {v};"""
+            version = f"""__attribute__((section(".xovi"))) int EXTENSIONVERSION = {v};"""
         else:
             print('Warning: No version defined in the XOVI project file.')
 
