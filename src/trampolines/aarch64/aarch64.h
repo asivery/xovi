@@ -16,4 +16,5 @@ struct SymbolData {
 
     int argsize;
     pthread_mutex_t mutex;
+    char disableMutex;
 };

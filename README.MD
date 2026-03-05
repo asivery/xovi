@@ -137,6 +137,10 @@ import? ext$globalf ; Equal to condition ext$globalf..., import ext$globalf...
 
 ## Current issues
 
+On all architectures, xovi has issues with invoking blocking functions, due to a mutex being set every time an overridden function
+gets invoked. This behavior can be disabled, by setting a '$noLock' metadata entry for the function in question. This, however, can cause
+more race conditions, and make the system less stable. Therefore, I do not recommend setting this flag in non-dev environments.
+
 ### aarch64
 
 Right now, apart from the race condition mentioned in [Hooks](#hooks), xovi should be somewhat stable.

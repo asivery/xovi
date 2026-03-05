@@ -22,9 +22,9 @@ void finiCall(struct SymbolData *data) {
 }
 extern void untrampolineStep2(void);
 
-struct SymbolData *pivotSymbol(const char *symbol, void *newaddr, int argSize) {
+struct SymbolData *pivotSymbol(const char *symbol, void *newaddr, struct OverrideExtraInfo extra) {
     static int pagesize = 0;
-    if(argSize != -1) {
+    if(extra.argSize != -1) {
         printf("!! TODO: AARCH64 is lacking support for more than 8 arguments / nonstandard cases handled by stack !!\n");
         return NULL;
     }
@@ -75,6 +75,8 @@ struct SymbolData *pivotSymbol(const char *symbol, void *newaddr, int argSize) {
         0xd61f0220 // BR x17
     };
 
+    s->disableMutex = extra.disableMutex;
+
     // During the restore-call, there will be 2 trampolines at the start of the function.
     uint8_t *funcstart = malloc(ARCHDEP_TRAMPOLINE_LENGTH + ARCHDEP_S2TRAMPOLINE_LENGTH);
     // Place the beginning of the function into the allocated region
@@ -98,12 +100,14 @@ struct SymbolData *pivotSymbol(const char *symbol, void *newaddr, int argSize) {
 }
 
 int untrampolineInit(struct SymbolData *symbol) {
-    pthread_mutex_lock(&symbol->mutex);
+    if(!symbol->disableMutex)
+        pthread_mutex_lock(&symbol->mutex);
     initCall(symbol);
 }
 int untrampolineFini(struct SymbolData *symbol) {
     finiCall(symbol);
-    pthread_mutex_unlock(&symbol->mutex);
+    if(!symbol->disableMutex)
+        pthread_mutex_unlock(&symbol->mutex);
 }
 extern void untrampolineFunction(void);
 void generateUntrampoline(void *function, struct SymbolData *symbol, int bytesRemaining) {

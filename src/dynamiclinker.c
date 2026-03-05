@@ -260,16 +260,23 @@ static void defineOverride(char *extensionBaseName, char *symbolName, void *newA
     function->ownerExtensionBaseName = extensionBaseName;
     function->overridenFunctionNameHash = hash;
     LOG("[I]: Pass 2a: Hooking function %s on behalf of extension %s\n", symbolName, extensionBaseName);
-    int argSize = -1;
+    struct OverrideExtraInfo extra = {
+        .argSize = -1,
+        .disableMutex = 0,
+    };
     struct XoviMetadataEntry *argSizeEntry = getMetadataEntryForFunction(extensionBaseName, symbolName, LP1_F_TYPE_OVERRIDE, "$argsize");
     if(argSizeEntry != NULL) {
         if(argSizeEntry->type == METADATA_TYPE_INT) {
-            argSize = argSizeEntry->value.i;
+            extra.argSize = argSizeEntry->value.i;
         } else {
             LOG("[W]: Pass 2a: While hooking function %s: Invalid type for $argsize metadata entry: %d\n", symbolName, extensionBaseName);
         }
     }
-    function->data = pivotSymbol(symbolName, newAddress, argSize);
+    struct XoviMetadataEntry *noLock = getMetadataEntryForFunction(extensionBaseName, symbolName, LP1_F_TYPE_OVERRIDE, "$noLock");
+    if(noLock != NULL) {
+        extra.disableMutex = true;
+    }
+    function->data = pivotSymbol(symbolName, newAddress, extra);
     if(function->data == NULL) {
         LOG_F("[F]: Pass 2a: Failed to hook function!");
         exit(1);

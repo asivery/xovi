@@ -42,7 +42,7 @@ void finiCall(struct SymbolData *data) {
 }
 extern void untrampolineStep2(void);
 
-struct SymbolData *pivotSymbol(const char *symbol, void *newaddr, int argSize) {
+struct SymbolData *pivotSymbol(const char *symbol, void *newaddr, struct OverrideExtraInfo extra) {
     static int pagesize = 0;
     if(pagesize == 0) pagesize = getpagesize();
     void *symboladdr = dlsym(RTLD_DEFAULT, symbol);
@@ -94,7 +94,8 @@ struct SymbolData *pivotSymbol(const char *symbol, void *newaddr, int argSize) {
     s->returningClosureAllocSpace = closures;
 
     // untrampolineStackShift supports only even values of argsize, therefore we need to round up odd numbers
-    s->argsize = (argSize + 1) & (~1);
+    s->argsize = (extra.argsize + 1) & (~1);
+    s->disableMutex = extra.disableMutex;
 
     if(!is_thumb_func) {
         memcpy(s->step2Trampoline, (instr_t[]){
@@ -128,12 +129,14 @@ struct SymbolData *pivotSymbol(const char *symbol, void *newaddr, int argSize) {
     return s;
 }
 int untrampolineInit(struct SymbolData *symbol) {
-    pthread_mutex_lock(&symbol->mutex);
+    if(!symbol->disableMutex)
+        pthread_mutex_lock(&symbol->mutex);
     initCall(symbol);
 }
 int untrampolineFini(struct SymbolData *symbol) {
     finiCall(symbol);
-    pthread_mutex_unlock(&symbol->mutex);
+    if(!symbol->disableMutex)
+        pthread_mutex_unlock(&symbol->mutex);
 }
 extern void untrampolineFunction(void);
 extern void untrampolineStackShift(void);

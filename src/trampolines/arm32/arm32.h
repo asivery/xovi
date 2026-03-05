@@ -21,4 +21,5 @@ struct SymbolData {
     void *returningClosureAllocSpace;
 
     pthread_mutex_t mutex;
+    char disableMutex;
 };
