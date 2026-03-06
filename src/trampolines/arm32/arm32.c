@@ -94,7 +94,7 @@ struct SymbolData *pivotSymbol(const char *symbol, void *newaddr, struct Overrid
     s->returningClosureAllocSpace = closures;
 
     // untrampolineStackShift supports only even values of argsize, therefore we need to round up odd numbers
-    s->argsize = (extra.argsize + 1) & (~1);
+    s->argsize = (extra.argSize + 1) & (~1);
     s->disableMutex = extra.disableMutex;
 
     if(!is_thumb_func) {
