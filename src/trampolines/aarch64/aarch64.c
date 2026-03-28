@@ -85,10 +85,11 @@ struct SymbolData *pivotSymbol(const char *symbol, void *newaddr, struct Overrid
     // Setup the structure's values
     s->address = symboladdr;
     s->beginningOfOriginalFunction = funcstart;
-    s->page_address = (void*) (((unsigned long long int) symboladdr) & ~(pagesize - 1));
+    s->page_address = (void*) (((ptrint_t) symboladdr) & ~(pagesize - 1));
     s->size = ARCHDEP_TRAMPOLINE_LENGTH + ARCHDEP_S2TRAMPOLINE_LENGTH;
     s->firstTrampoline = malloc(ARCHDEP_TRAMPOLINE_LENGTH);
     s->step2Trampoline = malloc(ARCHDEP_S2TRAMPOLINE_LENGTH);
+    if(((((ptrint_t)symboladdr) & (pagesize - 1)) + s->size) >= pagesize) pagesize <<= 1;
 
     // Write the correct data to the addresses in the structure object.
     pthread_mutex_init (&s->mutex, NULL);
